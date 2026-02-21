@@ -1,0 +1,407 @@
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Homework Planner Auto-Sorter initialized.');
+
+    // --- DOM Elements ---
+    const form = document.getElementById('assignment-form');
+    const priorityList = document.getElementById('priority-list');
+    const themeToggle = document.getElementById('theme-toggle');
+    const accentPicker = document.getElementById('accent-picker');
+    const dueDateInput = document.getElementById('dueDateInput');
+    const effortInput = document.getElementById('effort');
+    const effortUnit = document.getElementById('effortUnit');
+    const difficultyInput = document.getElementById('difficulty');
+    const gcalBtn = document.getElementById('gcal-signin-btn');
+    const scheduleBtn = document.getElementById('auto-schedule-btn');
+
+    // --- Google Calendar Config ---
+    const CLIENT_ID = CONFIG.CLIENT_ID;
+    const SCOPES = 'https://www.googleapis.com/auth/calendar';
+    let tokenClient;
+    let gapiInited = false;
+    let gisInited = false;
+
+    // Set minimum date to tomorrow (using local time to avoid UTC issues)
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    // Format as YYYY-MM-DD using local timezone
+    const yyyy = tomorrow.getFullYear();
+    const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const dd = String(tomorrow.getDate()).padStart(2, '0');
+    dueDateInput.min = `${yyyy}-${mm}-${dd}`;
+
+    // --- State ---
+    let assignments = [];
+
+    // --- Initialization ---
+    loadAssignments();
+    loadTheme();
+
+    // --- Event Listeners ---
+    form.addEventListener('submit', handleAddAssignment);
+    themeToggle.addEventListener('click', toggleTheme);
+    accentPicker.addEventListener('input', updateAccentColor);
+    gcalBtn.addEventListener('click', handleAuthClick);
+    scheduleBtn.addEventListener('click', handleAutoSchedule);
+
+    // Initialize Google Scripts
+    maybeInitGoogle();
+
+    // --- Handlers ---
+
+    function handleAddAssignment(e) {
+        e.preventDefault();
+
+        const title = document.getElementById('title').value;
+        const subject = document.getElementById('subject').value;
+        const difficulty = difficultyInput.value;
+        const dueDate = dueDateInput.value;
+
+        // Handle Effort Conversion
+        let effortVal = parseInt(effortInput.value);
+        if (effortUnit.value === 'minutes') {
+            effortVal = effortVal / 60; // Convert to hours for scoring
+        }
+
+        const newAssignment = {
+            id: Date.now(),
+            title,
+            subject,
+            dueDate,
+            difficulty,
+            effort: effortVal,
+            completed: false
+        };
+
+        assignments.push(newAssignment);
+        saveAssignments();
+        renderAssignments();
+        form.reset();
+
+        // Reset defaults
+        difficultyInput.value = 'Medium';
+        effortUnit.value = 'hours';
+    }
+
+    // --- Core Logic ---
+
+    function calculatePriorityScore(assignment) {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const dueDate = new Date(assignment.dueDate + 'T00:00:00');
+        const timeDiff = dueDate - now;
+        const daysUntilDue = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+        // Base score starts at 0, builds up based on factors
+        let score = 0;
+
+        // 1. Urgency (Days until due)
+        // Closer dates = Higher score
+        if (daysUntilDue < 0) score += 100; // Overdue
+        else if (daysUntilDue === 0) score += 80; // Today
+        else if (daysUntilDue === 1) score += 60; // Tomorrow
+        else if (daysUntilDue <= 3) score += 40; // Within 3 days
+        else if (daysUntilDue <= 7) score += 20; // Within a week
+        else score += 5; // Later
+
+        // 2. Difficulty
+        // Harder tasks should be prioritized to start earlier? Or easier first?
+        // Usually, tackle harder tasks earlier or when energy is high.
+        // Let's give higher weight to harder tasks so they bubble up.
+        const diffWeight = {
+            'Painful': 50,
+            'Difficult': 40,
+            'Medium': 30,
+            'Easy': 20,
+            'Breeze': 10
+        };
+        score += (diffWeight[assignment.difficulty] || 0);
+
+        // 3. Effort (Duration)
+        // Long tasks needs more time planning, so slight boost.
+        // Cap at 10 points to not overwhelm urgency.
+        score += Math.min(assignment.effort * 2, 20);
+
+        return score;
+    }
+
+    function groupAssignments(assignments) {
+        const groups = {
+            overdue: [],
+            today: [],
+            tomorrow: [],
+            thisWeek: [],
+            later: []
+        };
+
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        assignments.forEach(assignment => {
+            const dueDate = new Date(assignment.dueDate + 'T00:00:00');
+            const diffTime = dueDate - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) groups.overdue.push(assignment);
+            else if (diffDays === 0) groups.today.push(assignment);
+            else if (diffDays === 1) groups.tomorrow.push(assignment);
+            else if (diffDays <= 7) groups.thisWeek.push(assignment);
+            else groups.later.push(assignment);
+        });
+
+        return groups;
+    }
+
+    function renderAssignments() {
+        priorityList.innerHTML = '';
+
+        if (assignments.length === 0) {
+            priorityList.innerHTML = '<p class="empty-state">No assignments yet. Add one to get started!</p>';
+            return;
+        }
+
+        const groups = groupAssignments(assignments);
+
+        const groupTitles = {
+            overdue: "Overdue 🚨",
+            today: "Due Today 🔥",
+            tomorrow: "Due Tomorrow 📅",
+            thisWeek: "Due This Week 🗓️",
+            later: "Due Later 💤"
+        };
+
+        const diffMap = {
+            'Breeze': '🟢',
+            'Easy': '🔵',
+            'Medium': '🟡',
+            'Difficult': '🟠',
+            'Painful': '🔴'
+        };
+
+        for (const [key, group] of Object.entries(groups)) {
+            if (group.length > 0) {
+                // Sort within group by priority score
+                group.sort((a, b) => calculatePriorityScore(b) - calculatePriorityScore(a));
+
+                const groupHeader = document.createElement('div');
+                groupHeader.className = 'group-header';
+                groupHeader.innerHTML = `<span>${groupTitles[key]}</span>`;
+                priorityList.appendChild(groupHeader);
+
+                group.forEach(assignment => {
+                    const score = calculatePriorityScore(assignment);
+                    const assignmentEl = document.createElement('div');
+                    assignmentEl.classList.add('assignment-item');
+
+                    let urgencyClass = 'low-urgency';
+                    if (score >= 100) urgencyClass = 'critical-urgency';
+                    else if (score >= 50) urgencyClass = 'high-urgency';
+                    else if (score >= 20) urgencyClass = 'medium-urgency';
+
+                    assignmentEl.classList.add(urgencyClass);
+
+                    const dateObj = new Date(assignment.dueDate + 'T00:00:00');
+                    const dateOptions = { month: 'short', day: 'numeric' };
+                    const dateStr = dateObj.toLocaleDateString(undefined, dateOptions);
+
+                    const effortDisplay = `${parseFloat(assignment.effort.toFixed(2))}h`;
+                    const diffEmoji = diffMap[assignment.difficulty] || '';
+
+                    assignmentEl.innerHTML = `
+                            <div class="assignment-content">
+                                <div class="assignment-top">
+                                    <h3>${assignment.title}</h3>
+                                    <div class="assignment-actions">
+                                        <button class="delete-btn" data-id="${assignment.id}" aria-label="Delete">&times;</button>
+                                    </div>
+                                </div>
+                                <div class="assignment-meta">
+                                    <span class="subject-badge">${assignment.subject}</span>
+                                    <span title="Difficulty: ${assignment.difficulty}">${diffEmoji} ${assignment.difficulty}</span>
+                                    <span>📅 ${dateStr}</span>
+                                    <span>⏳ ${effortDisplay}</span>
+                                </div>
+                            </div>
+                        `;
+                    priorityList.appendChild(assignmentEl);
+                });
+            }
+        }
+
+        // Add event listeners for delete buttons
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = parseInt(e.target.dataset.id);
+                deleteAssignment(id);
+            });
+        });
+    }
+
+    function deleteAssignment(id) {
+        assignments = assignments.filter(a => a.id !== id);
+        saveAssignments();
+        renderAssignments();
+    }
+
+    function loadAssignments() {
+        const stored = localStorage.getItem('assignments');
+        if (stored) {
+            assignments = JSON.parse(stored);
+            renderAssignments();
+        }
+    }
+
+    function saveAssignments() {
+        localStorage.setItem('assignments', JSON.stringify(assignments));
+    }
+
+    // --- Theme & Accent ---
+
+    function toggleTheme() {
+        document.body.classList.toggle('light-theme');
+        const isLight = document.body.classList.contains('light-theme');
+        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        themeToggle.textContent = isLight ? '🌙' : '☀️';
+    }
+
+    function updateAccentColor(e) {
+        const color = e.target.value;
+        document.documentElement.style.setProperty('--accent-color', color);
+        localStorage.setItem('accentColor', color);
+    }
+
+    function loadTheme() {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light') {
+            document.body.classList.add('light-theme');
+            themeToggle.textContent = '🌙';
+        }
+
+        const savedAccent = localStorage.getItem('accentColor');
+        if (savedAccent) {
+            document.documentElement.style.setProperty('--accent-color', savedAccent);
+            accentPicker.value = savedAccent;
+        }
+    }
+
+    // --- Google Calendar Integration ---
+
+    function maybeInitGoogle() {
+        if (typeof google !== 'undefined' && typeof gapi !== 'undefined') {
+            gapi.load('client', initializeGapiClient);
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // defined later per request
+            });
+            gisInited = true;
+            checkAuthButton();
+        } else {
+            // Retry if scripts haven't loaded yet
+            setTimeout(maybeInitGoogle, 500);
+        }
+    }
+
+    async function initializeGapiClient() {
+        await gapi.client.init({
+            // apiKey: 'YOUR_API_KEY', // Optional for some calls, but we use OAuth
+            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+        });
+        gapiInited = true;
+        checkAuthButton();
+    }
+
+    function checkAuthButton() {
+        if (gapiInited && gisInited) {
+            gcalBtn.innerText = '📅 Connect Google Calendar';
+        }
+    }
+
+    function handleAuthClick() {
+        tokenClient.callback = async (resp) => {
+            if (resp.error !== undefined) {
+                throw (resp);
+            }
+            gcalBtn.innerText = '✅ Connected';
+            scheduleBtn.style.display = 'inline-block';
+            await listUpcomingEvents();
+        };
+
+        if (gapi.client.getToken() === null) {
+            // Prompt the user to select a Google Account and ask for consent to share their data
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        } else {
+            // Skip display of account chooser and consent dialog for an existing session.
+            tokenClient.requestAccessToken({ prompt: '' });
+        }
+    }
+
+    async function listUpcomingEvents() {
+        // Just a test function to verify connection
+        try {
+            const request = {
+                'calendarId': 'primary',
+                'timeMin': (new Date()).toISOString(),
+                'showDeleted': false,
+                'singleEvents': true,
+                'maxResults': 10,
+                'orderBy': 'startTime',
+            };
+            const response = await gapi.client.calendar.events.list(request);
+            console.log('Upcoming events:', response.result.items);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    async function handleAutoSchedule() {
+        if (!assignments.length) {
+            alert("No assignments to schedule!");
+            return;
+        }
+
+        scheduleBtn.disabled = true;
+        scheduleBtn.innerText = "Scheduling...";
+
+        try {
+            // 1. Get assignments due tomorrow or next few days
+            const toSchedule = assignments.filter(a => !a.completed);
+
+            // 2. Simple Scheduling Strategy:
+            // Find finding free slots is complex. For V1, we will simply
+            // add them to the calendar on the Due Date at 9 AM (default)
+            // or 1 hour after the previous one.
+
+            for (const task of toSchedule) {
+                const event = {
+                    'summary': `📚 ${task.title} (${task.subject})`,
+                    'description': `Difficulty: ${task.difficulty}\nEst. Effort: ${task.effort}h`,
+                    'start': {
+                        'dateTime': `${task.dueDate}T09:00:00`,
+                        'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    },
+                    'end': {
+                        'dateTime': `${task.dueDate}T${9 + Math.floor(task.effort)}:${(task.effort % 1 * 60).toString().padStart(2, '0')}:00`,
+                        'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    },
+                };
+
+                // Advanced: We could check for conflicts here using events.list
+                // For now, we just insert.
+
+                await gapi.client.calendar.events.insert({
+                    'calendarId': 'primary',
+                    'resource': event,
+                });
+            }
+
+            alert(`Successfully scheduled ${toSchedule.length} tasks!`);
+        } catch (err) {
+            console.error("Error scheduling:", err);
+            alert("Failed to schedule. Check console.");
+        } finally {
+            scheduleBtn.disabled = false;
+            scheduleBtn.innerText = "✨ Auto-Schedule";
+        }
+    }
+}); 

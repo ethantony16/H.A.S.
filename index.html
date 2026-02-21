@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homework Planner Auto-Sorter</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <div class="header-content">
+                <div>
+                    <h1>Homework Auto-Sorter</h1>
+                    <p>Prioritize your work automatically.</p>
+                </div>
+                <div class="theme-controls">
+                    <button id="gcal-signin-btn" class="gcal-btn" aria-label="Connect Google Calendar">📅
+                        Connect</button>
+                    <button id="theme-toggle" aria-label="Toggle Dark Mode">☀️</button>
+                    <input type="color" id="accent-picker" value="#ff9f43" title="Choose Accent Color">
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <section class="add-assignment-section">
+                <h2>Add Assignment</h2>
+                <form id="assignment-form">
+                    <div class="form-group">
+                        <label for="title">Title</label>
+                        <input type="text" id="title" name="title" required placeholder="e.g., Read Chapter 4">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="subject">Subject</label>
+                            <input list="subjects" id="subject" name="subject" required placeholder="Select or type..."
+                                autocomplete="off">
+                            <datalist id="subjects">
+                                <option value="Mathematics">
+                                <option value="Language Arts">
+                                <option value="Science">
+                                <option value="Social Studies">
+                                <option value="Foreign Language">
+                                <option value="Computer Science">
+                                <option value="Art">
+                                <option value="Music">
+                                <option value="Physical Education">
+                            </datalist>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="dueDateInput">Due Date</label>
+                            <input type="date" id="dueDateInput" name="dueDateInput" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+
+
+                        <div class="form-row">
+                            <div class="form-group difficulty-group">
+                                <label for="difficulty">Est. Effort</label>
+                                <select id="difficulty" name="difficulty" required>
+                                    <option value="Breeze">Breeze 🔵 </option>
+                                    <option value="Easy">Easy 🟢 </option>
+                                    <option value="Medium" selected>Medium 🟡 </option>
+                                    <option value="Difficult">Difficult 🟠 </option>
+                                    <option value="Painful">Painful 🔴 </option>
+                                </select>
+                            </div>
+
+                            <div class="form-group duration-group">
+                                <label for="effort">Duration</label>
+                                <div class="effort-wrapper">
+                                    <input type="number" id="effort" name="effort" min="0" step="1" required
+                                        placeholder="Duration">
+                                    <select id="effortUnit">
+                                        <option value="hours" selected>Hours</option>
+                                        <option value="minutes">Minutes</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="add-btn">Add Assignment</button>
+                </form>
+            </section>
+
+            <section class="priority-list-section">
+                <div class="list-header">
+                    <h2>Priority List</h2>
+                    <div class="view-controls">
+                        <button id="auto-schedule-btn" class="secondary-btn" style="display: none;">✨
+                            Auto-Schedule</button>
+                    </div>
+                </div>
+                <div id="priority-list" class="assignment-list">
+                    <!-- Assignments will be injected here -->
+                    <p class="empty-state">No assignments yet. Add one to get started!</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Google Scripts -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
