@@ -38,13 +38,27 @@
                 <h2>Add Assignment</h2>
                 <form id="assignment-form">
                     <div class="form-group">
-                        <label for="title">Title</label>
+                        <label for="title">
+                            <svg class="icon-ui" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                            Title
+                        </label>
                         <input type="text" id="title" name="title" required placeholder="e.g., Read Chapter 4">
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="subject">Subject</label>
+                            <label for="subject">
+                                <svg class="icon-ui" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                                </svg>
+                                Subject
+                            </label>
                             <input list="subjects" id="subject" name="subject" required placeholder="Select or type..."
                                 autocomplete="off">
                             <datalist id="subjects">
@@ -61,7 +75,15 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="dueDateInput">Due Date</label>
+                            <label for="dueDateInput">
+                                <svg class="icon-ui" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5z">
+                                    </path>
+                                    <polyline points="22 7 12 12 2 7"></polyline>
+                                </svg>
+                                Due Date
+                            </label>
                             <input type="date" id="dueDateInput" name="dueDateInput" required>
                         </div>
                     </div>
@@ -71,7 +93,15 @@
 
                         <div class="form-row">
                             <div class="form-group difficulty-group">
-                                <label for="difficulty">Est. Effort</label>
+                                <label for="difficulty">
+                                    <svg class="icon-ui" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M12 16v-4"></path>
+                                        <path d="M12 8h.01"></path>
+                                    </svg>
+                                    Est. Difficulty
+                                </label>
                                 <select id="difficulty" name="difficulty" required>
                                     <option value="Breeze">Breeze 🔵 </option>
                                     <option value="Easy">Easy 🟢 </option>
@@ -82,7 +112,14 @@
                             </div>
 
                             <div class="form-group duration-group">
-                                <label for="effort">Duration</label>
+                                <label for="effort">
+                                    <svg class="icon-ui" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                    Duration
+                                </label>
                                 <div class="effort-wrapper">
                                     <input type="number" id="effort" name="effort" min="0" step="1" required
                                         placeholder="Duration">

@@ -186,6 +186,9 @@ label {
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 input,
@@ -477,13 +480,19 @@ button.add-btn:hover {
     transform: translateY(-1px);
 }
 
-.icon-calendar {
+.icon-ui {
     width: 18px;
     height: 18px;
     stroke: var(--accent-color);
     transition: var(--transition);
 }
 
-.gcal-btn:hover .icon-calendar {
+.gcal-btn:hover .icon-ui {
     stroke: var(--accent-hover);
+}
+
+label .icon-ui {
+    width: 14px;
+    height: 14px;
+    opacity: 0.7;
 }
