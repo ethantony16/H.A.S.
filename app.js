@@ -20,15 +20,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let gapiInited = false;
     let gisInited = false;
 
-    // Set minimum date to tomorrow (using local time to avoid UTC issues)
+    // Set date boundaries
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    // Format as YYYY-MM-DD using local timezone
-    const yyyy = tomorrow.getFullYear();
-    const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
-    const dd = String(tomorrow.getDate()).padStart(2, '0');
-    dueDateInput.min = `${yyyy}-${mm}-${dd}`;
+
+    // School year ends June 30th
+    const currentYear = today.getFullYear();
+    const schoolYearEnd = new Date(currentYear + (today.getMonth() > 5 ? 1 : 0), 5, 30);
+
+    const formatDate = (date) => {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    dueDateInput.min = formatDate(tomorrow);
+    dueDateInput.max = formatDate(schoolYearEnd);
 
     // --- State ---
     let assignments = [];
@@ -218,7 +227,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="assignment-meta">
                                     <span class="subject-badge">${assignment.subject}</span>
                                     <span title="Difficulty: ${assignment.difficulty}">${diffEmoji} ${assignment.difficulty}</span>
-                                    <span>📅 ${dateStr}</span>
+                                    <span>
+                                        <svg class="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                        ${dateStr}
+                                    </span>
                                     <span>⏳ ${effortDisplay}</span>
                                 </div>
                             </div>
