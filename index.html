@@ -38,27 +38,13 @@
                 <h2>Add Assignment</h2>
                 <form id="assignment-form">
                     <div class="form-group">
-                        <label for="title">
-                            <svg class="icon-ui" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                            Title
-                        </label>
+                        <label for="title">Title</label>
                         <input type="text" id="title" name="title" required placeholder="e.g., Read Chapter 4">
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="subject">
-                                <svg class="icon-ui" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-                                </svg>
-                                Subject
-                            </label>
+                            <label for="subject">Subject</label>
                             <input list="subjects" id="subject" name="subject" required placeholder="Select or type..."
                                 autocomplete="off">
                             <datalist id="subjects">
@@ -75,15 +61,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="dueDateInput">
-                                <svg class="icon-ui" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5z">
-                                    </path>
-                                    <polyline points="22 7 12 12 2 7"></polyline>
-                                </svg>
-                                Due Date
-                            </label>
+                            <label for="dueDateInput">Due Date</label>
                             <input type="date" id="dueDateInput" name="dueDateInput" required>
                         </div>
                     </div>
@@ -93,33 +71,18 @@
 
                         <div class="form-row">
                             <div class="form-group difficulty-group">
-                                <label for="difficulty">
-                                    <svg class="icon-ui" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <path d="M12 16v-4"></path>
-                                        <path d="M12 8h.01"></path>
-                                    </svg>
-                                    Est. Difficulty
-                                </label>
+                                <label for="difficulty">Est. Effort</label>
                                 <select id="difficulty" name="difficulty" required>
-                                    <option value="Breeze">Breeze 🔵 </option>
-                                    <option value="Easy">Easy 🟢 </option>
-                                    <option value="Medium" selected>Medium 🟡 </option>
-                                    <option value="Difficult">Difficult 🟠 </option>
-                                    <option value="Painful">Painful 🔴 </option>
+                                    <option value="Extremely Easy">Extremely Easy 🟢</option>
+                                    <option value="Easy">Easy 🔵</option>
+                                    <option value="Medium" selected>Medium 🟡</option>
+                                    <option value="Difficult">Difficult 🟠</option>
+                                    <option value="Extremely Difficult">Extremely Difficult 🔴</option>
                                 </select>
                             </div>
 
                             <div class="form-group duration-group">
-                                <label for="effort">
-                                    <svg class="icon-ui" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <polyline points="12 6 12 12 16 14"></polyline>
-                                    </svg>
-                                    Duration
-                                </label>
+                                <label for="effort">Duration</label>
                                 <div class="effort-wrapper">
                                     <input type="number" id="effort" name="effort" min="0" step="1" required
                                         placeholder="Duration">
@@ -136,6 +99,37 @@
                 </form>
             </section>
 
+            <section class="preferences-section">
+                <h2>Schedule Preferences</h2>
+                <div class="preferences-grid">
+                    <div class="pref-group">
+                        <h3>School Hours</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="school-start">Start</label>
+                                <input type="time" id="school-start" value="08:00">
+                            </div>
+                            <div class="form-group">
+                                <label for="school-end">End</label>
+                                <input type="time" id="school-end" value="15:00">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pref-group">
+                        <h3>Extracurriculars</h3>
+                        <div id="activities-list" class="activities-list">
+                            <!-- Activities will be added here -->
+                        </div>
+                        <div class="add-activity-form">
+                            <input type="text" id="activity-name" placeholder="Name">
+                            <input type="time" id="activity-start">
+                            <input type="time" id="activity-end">
+                            <button type="button" id="add-activity-btn" class="secondary-btn small-btn">Add</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <section class="priority-list-section">
                 <div class="list-header">
                     <h2>Priority List</h2>
@@ -150,6 +144,18 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Are you sure?</h3>
+            <p>This assignment will be permanently deleted.</p>
+            <div class="modal-actions">
+                <button id="cancel-delete" class="cancel-btn">Cancel</button>
+                <button id="confirm-delete" class="confirm-btn">Delete</button>
+            </div>
+        </div>
     </div>
 
     <!-- Google Scripts -->

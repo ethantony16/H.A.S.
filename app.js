@@ -12,10 +12,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const difficultyInput = document.getElementById('difficulty');
     const gcalBtn = document.getElementById('gcal-signin-btn');
     const scheduleBtn = document.getElementById('auto-schedule-btn');
+    const deleteModal = document.getElementById('delete-modal');
+    const confirmDeleteBtn = document.getElementById('confirm-delete');
+    const cancelDeleteBtn = document.getElementById('cancel-delete');
+
+    // --- Preferences Elements ---
+    const schoolStartInput = document.getElementById('school-start');
+    const schoolEndInput = document.getElementById('school-end');
+    const activitiesList = document.getElementById('activities-list');
+    const activityNameInput = document.getElementById('activity-name');
+    const activityStartInput = document.getElementById('activity-start');
+    const activityEndInput = document.getElementById('activity-end');
+    const addActivityBtn = document.getElementById('add-activity-btn');
+
 
     // --- Google Calendar Config ---
     const CLIENT_ID = CONFIG.CLIENT_ID;
-    const SCOPES = 'https://www.googleapis.com/auth/calendar';
+    const SCOPES = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks';
     let tokenClient;
     let gapiInited = false;
     let gisInited = false;
@@ -41,9 +54,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- State ---
     let assignments = [];
+    let assignmentToDeleteId = null;
+    let preferences = {
+        schoolHours: { start: '08:00', end: '15:00' },
+        activities: []
+    };
 
     // --- Initialization ---
     loadAssignments();
+    loadPreferences();
     loadTheme();
 
     // --- Event Listeners ---
@@ -52,6 +71,13 @@ document.addEventListener('DOMContentLoaded', () => {
     accentPicker.addEventListener('input', updateAccentColor);
     gcalBtn.addEventListener('click', handleAuthClick);
     scheduleBtn.addEventListener('click', handleAutoSchedule);
+    confirmDeleteBtn.addEventListener('click', handleConfirmDelete);
+    cancelDeleteBtn.addEventListener('click', closeModal);
+
+    schoolStartInput.addEventListener('change', savePreferences);
+    schoolEndInput.addEventListener('change', savePreferences);
+    addActivityBtn.addEventListener('click', handleAddActivity);
+
 
     // Initialize Google Scripts
     maybeInitGoogle();
@@ -118,11 +144,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Usually, tackle harder tasks earlier or when energy is high.
         // Let's give higher weight to harder tasks so they bubble up.
         const diffWeight = {
-            'Painful': 50,
+            'Extremely Difficult': 50,
             'Difficult': 40,
             'Medium': 30,
             'Easy': 20,
-            'Breeze': 10
+            'Extremely Easy': 10
         };
         score += (diffWeight[assignment.difficulty] || 0);
 
@@ -180,11 +206,11 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const diffMap = {
-            'Breeze': '🟢',
+            'Extremely Easy': '🟢',
             'Easy': '🔵',
             'Medium': '🟡',
             'Difficult': '🟠',
-            'Painful': '🔴'
+            'Extremely Difficult': '🔴'
         };
 
         for (const [key, group] of Object.entries(groups)) {
@@ -228,13 +254,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <span class="subject-badge">${assignment.subject}</span>
                                     <span title="Difficulty: ${assignment.difficulty}">${diffEmoji} ${assignment.difficulty}</span>
                                     <span>
-                                        <svg class="icon-ui icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5z"></path><polyline points="22 7 12 12 2 7"></polyline></svg>
+                                        <svg class="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                                         ${dateStr}
                                     </span>
-                                    <span>
-                                        <svg class="icon-ui icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                                        ${effortDisplay}
-                                    </span>
+                                    <span>⏳ ${effortDisplay}</span>
                                 </div>
                             </div>
                         `;
@@ -253,9 +276,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function deleteAssignment(id) {
-        assignments = assignments.filter(a => a.id !== id);
-        saveAssignments();
-        renderAssignments();
+        assignmentToDeleteId = id;
+        deleteModal.classList.add('active');
+    }
+
+    function closeModal() {
+        deleteModal.classList.remove('active');
+        assignmentToDeleteId = null;
+    }
+
+    function handleConfirmDelete() {
+        if (assignmentToDeleteId !== null) {
+            assignments = assignments.filter(a => a.id !== assignmentToDeleteId);
+            saveAssignments();
+            renderAssignments();
+            closeModal();
+        }
     }
 
     function loadAssignments() {
@@ -270,7 +306,63 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('assignments', JSON.stringify(assignments));
     }
 
-    // --- Theme & Accent ---
+    function loadPreferences() {
+        const stored = localStorage.getItem('preferences');
+        if (stored) {
+            preferences = JSON.parse(stored);
+            schoolStartInput.value = preferences.schoolHours.start;
+            schoolEndInput.value = preferences.schoolHours.end;
+            renderActivities();
+        }
+    }
+
+    function savePreferences() {
+        preferences.schoolHours.start = schoolStartInput.value;
+        preferences.schoolHours.end = schoolEndInput.value;
+        localStorage.setItem('preferences', JSON.stringify(preferences));
+    }
+
+    function handleAddActivity() {
+        const name = activityNameInput.value;
+        const start = activityStartInput.value;
+        const end = activityEndInput.value;
+
+        if (name && start && end) {
+            preferences.activities.push({ id: Date.now(), name, start, end });
+            savePreferences();
+            renderActivities();
+            activityNameInput.value = '';
+            activityStartInput.value = '';
+            activityEndInput.value = '';
+        }
+    }
+
+    function renderActivities() {
+        activitiesList.innerHTML = '';
+        preferences.activities.forEach(activity => {
+            const div = document.createElement('div');
+            div.className = 'activity-item';
+            div.innerHTML = `
+                <div class="activity-info">
+                    <strong>${activity.name}</strong>
+                    <span>${activity.start} - ${activity.end}</span>
+                </div>
+                <button class="remove-activity-btn" data-id="${activity.id}">&times;</button>
+            `;
+            activitiesList.appendChild(div);
+        });
+
+        document.querySelectorAll('.remove-activity-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = parseInt(e.target.dataset.id);
+                preferences.activities = preferences.activities.filter(a => a.id !== id);
+                savePreferences();
+                renderActivities();
+            });
+        });
+    }
+
+    // --- Google Calendar Integration ---
 
     function toggleTheme() {
         document.body.classList.toggle('light-theme');
@@ -319,8 +411,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initializeGapiClient() {
         await gapi.client.init({
-            // apiKey: 'YOUR_API_KEY', // Optional for some calls, but we use OAuth
-            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+            discoveryDocs: [
+                'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest',
+                'https://www.googleapis.com/discovery/v1/apis/tasks/v1/rest'
+            ],
         });
         gapiInited = true;
         checkAuthButton();
@@ -379,44 +473,59 @@ document.addEventListener('DOMContentLoaded', () => {
         scheduleBtn.innerText = "Scheduling...";
 
         try {
-            // 1. Get assignments due tomorrow or next few days
+            // 1. Get or Create "Homework" Task List
+            const listResponse = await gapi.client.tasks.tasklists.list();
+            let homeworkList = listResponse.result.items.find(l => l.title === "Homework Auto-Sorter");
+
+            if (!homeworkList) {
+                const newList = await gapi.client.tasks.tasklists.insert({
+                    resource: { title: "Homework Auto-Sorter" }
+                });
+                homeworkList = newList.result;
+            }
+
             const toSchedule = assignments.filter(a => !a.completed);
 
-            // 2. Simple Scheduling Strategy:
-            // Find finding free slots is complex. For V1, we will simply
-            // add them to the calendar on the Due Date at 9 AM (default)
-            // or 1 hour after the previous one.
+            // Sort by priority to schedule the most important ones first
+            toSchedule.sort((a, b) => calculatePriorityScore(b) - calculatePriorityScore(a));
 
             for (const task of toSchedule) {
-                const event = {
-                    'summary': `📚 ${task.title} (${task.subject})`,
-                    'description': `Difficulty: ${task.difficulty}\nEst. Effort: ${task.effort}h`,
-                    'start': {
-                        'dateTime': `${task.dueDate}T09:00:00`,
-                        'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    },
-                    'end': {
-                        'dateTime': `${task.dueDate}T${9 + Math.floor(task.effort)}:${(task.effort % 1 * 60).toString().padStart(2, '0')}:00`,
-                        'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    },
+                // Determine scheduled time
+                const scheduledTime = calculateOptimalTime(task.dueDate);
+
+                const newTask = {
+                    title: `📚 ${task.title} (${task.subject})`,
+                    notes: `Difficulty: ${task.difficulty}\nEst. Effort: ${task.effort}h`,
+                    due: `${task.dueDate}T${scheduledTime}:00.000Z` // Simplification for demo
                 };
 
-                // Advanced: We could check for conflicts here using events.list
-                // For now, we just insert.
-
-                await gapi.client.calendar.events.insert({
-                    'calendarId': 'primary',
-                    'resource': event,
+                await gapi.client.tasks.tasks.insert({
+                    tasklist: homeworkList.id,
+                    resource: newTask
                 });
             }
 
-            alert(`Successfully scheduled ${toSchedule.length} tasks!`);
+            alert(`Successfully added ${toSchedule.length} tasks to your "Homework Auto-Sorter" list!`);
         } catch (err) {
-            console.error("Error scheduling:", err);
-            alert("Failed to schedule. Check console.");
+            console.error("Error scheduling tasks:", err);
+            alert("Failed to schedule tasks. Check console.");
         } finally {
             scheduleBtn.disabled = false;
             scheduleBtn.innerText = "✨ Auto-Schedule";
         }
+    }
+
+    function calculateOptimalTime(dateStr) {
+        // Logic to find the first free slot after school/activities
+        // For simplicity: after school end or after the latest activity
+        let latestTime = preferences.schoolHours.end;
+
+        preferences.activities.forEach(act => {
+            if (act.end > latestTime) {
+                latestTime = act.end;
+            }
+        });
+
+        return latestTime;
     }
 }); 
