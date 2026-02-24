@@ -362,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Google Calendar Integration ---
+    // --- Theme & Accent ---
 
     function toggleTheme() {
         document.body.classList.toggle('light-theme');
@@ -422,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function checkAuthButton() {
         if (gapiInited && gisInited) {
-            gcalBtn.innerText = '📅 Connect Google Calendar';
+            // Button is ready - keep its current SVG icon + text
         }
     }
 
@@ -431,7 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (resp.error !== undefined) {
                 throw (resp);
             }
-            gcalBtn.innerText = '✅ Connected';
+            gcalBtn.innerHTML = '✅ Connected';
             scheduleBtn.style.display = 'inline-block';
             await listUpcomingEvents();
         };

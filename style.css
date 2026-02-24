@@ -239,19 +239,7 @@ input::placeholder {
     min-width: 80px;
 }
 
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-md);
-    align-items: start;
-}
 
-/* Make rows stack on small screens */
-@media (max-width: 600px) {
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-}
 
 button.add-btn {
     background-color: var(--accent-color);
@@ -444,20 +432,23 @@ button.add-btn:hover {
 
 /* Google Calendar Button */
 .gcal-btn {
-    background: #fff;
-    color: #333;
-    border: 1px solid #ddd;
+    background: var(--surface-color);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
     padding: 0.5rem 1rem;
     border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
     transition: all 0.2s;
     margin-right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
 }
 
 .gcal-btn:hover {
-    background: #f1f3f4;
-    border-color: #c1c1c1;
+    background: var(--bg-color);
+    border-color: var(--accent-color);
 }
 
 .secondary-btn {

@@ -67,30 +67,26 @@
                     </div>
 
                     <div class="form-row">
+                        <div class="form-group difficulty-group">
+                            <label for="difficulty">Difficulty</label>
+                            <select id="difficulty" name="difficulty" required>
+                                <option value="Extremely Easy">Extremely Easy 🟢</option>
+                                <option value="Easy">Easy 🔵</option>
+                                <option value="Medium" selected>Medium 🟡</option>
+                                <option value="Difficult">Difficult 🟠</option>
+                                <option value="Extremely Difficult">Extremely Difficult 🔴</option>
+                            </select>
+                        </div>
 
-
-                        <div class="form-row">
-                            <div class="form-group difficulty-group">
-                                <label for="difficulty">Est. Effort</label>
-                                <select id="difficulty" name="difficulty" required>
-                                    <option value="Extremely Easy">Extremely Easy 🟢</option>
-                                    <option value="Easy">Easy 🔵</option>
-                                    <option value="Medium" selected>Medium 🟡</option>
-                                    <option value="Difficult">Difficult 🟠</option>
-                                    <option value="Extremely Difficult">Extremely Difficult 🔴</option>
+                        <div class="form-group duration-group">
+                            <label for="effort">Duration</label>
+                            <div class="effort-wrapper">
+                                <input type="number" id="effort" name="effort" min="0" step="1" required
+                                    placeholder="Duration">
+                                <select id="effortUnit">
+                                    <option value="hours" selected>Hours</option>
+                                    <option value="minutes">Minutes</option>
                                 </select>
-                            </div>
-
-                            <div class="form-group duration-group">
-                                <label for="effort">Duration</label>
-                                <div class="effort-wrapper">
-                                    <input type="number" id="effort" name="effort" min="0" step="1" required
-                                        placeholder="Duration">
-                                    <select id="effortUnit">
-                                        <option value="hours" selected>Hours</option>
-                                        <option value="minutes">Minutes</option>
-                                    </select>
-                                </div>
                             </div>
                         </div>
                     </div>
