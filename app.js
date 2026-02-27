@@ -327,24 +327,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const start = activityStartInput.value;
         const end = activityEndInput.value;
 
-        if (name && start && end) {
-            preferences.activities.push({ id: Date.now(), name, start, end });
+        // Collect selected days
+        const selectedDays = Array.from(document.querySelectorAll('#activity-days input:checked')).map(cb => parseInt(cb.value));
+
+        if (name && start && end && selectedDays.length > 0) {
+            preferences.activities.push({ id: Date.now(), name, start, end, days: selectedDays });
             savePreferences();
             renderActivities();
             activityNameInput.value = '';
             activityStartInput.value = '';
             activityEndInput.value = '';
+            document.querySelectorAll('#activity-days input').forEach(cb => cb.checked = false);
+        } else if (selectedDays.length === 0) {
+            alert("Please select at least one day for the activity.");
         }
     }
 
     function renderActivities() {
         activitiesList.innerHTML = '';
+
+        const dayMap = { 0: 'Su', 1: 'M', 2: 'T', 3: 'W', 4: 'Th', 5: 'F', 6: 'Sa' };
+
         preferences.activities.forEach(activity => {
+            const daysStr = (activity.days || []).map(d => dayMap[d]).join(', ');
+
             const div = document.createElement('div');
             div.className = 'activity-item';
             div.innerHTML = `
                 <div class="activity-info">
-                    <strong>${activity.name}</strong>
+                    <strong>${activity.name} <span class="activity-days-badge">${daysStr}</span></strong>
                     <span>${activity.start} - ${activity.end}</span>
                 </div>
                 <button class="remove-activity-btn" data-id="${activity.id}">&times;</button>
@@ -516,16 +527,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function calculateOptimalTime(dateStr) {
-        // Logic to find the first free slot after school/activities
-        // For simplicity: after school end or after the latest activity
-        let latestTime = preferences.schoolHours.end;
+        const dueDate = new Date(dateStr + 'T00:00:00');
+        const dayOfWeek = dueDate.getDay(); // 0 = Sunday, 1 = Monday, ... 6 = Saturday
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+
+        // 1. Determine base available time for the day
+        let availableTime = "09:00"; // Default weekend start time
+
+        if (!isWeekend) {
+            // It's a weekday, wait until school is over
+            availableTime = preferences.schoolHours.end;
+        }
+
+        // 2. Find the *latest* activity that occurs on this specific day
+        let latestActivityEnd = availableTime;
 
         preferences.activities.forEach(act => {
-            if (act.end > latestTime) {
-                latestTime = act.end;
+            // Check if this activity happens on the due date's day of week
+            if (act.days && act.days.includes(dayOfWeek)) {
+                if (act.end > latestActivityEnd) {
+                    latestActivityEnd = act.end;
+                }
             }
         });
 
-        return latestTime;
+        // 3. The earliest we can start is after school AND after all activities for the day
+        return latestActivityEnd;
     }
 }); 

@@ -517,6 +517,40 @@ button.add-btn:hover {
     flex: 0 1 auto;
 }
 
+.day-selector {
+    display: flex;
+    gap: 0.25rem;
+    flex-basis: 100%;
+    /* Force onto new line */
+    justify-content: flex-start;
+    margin-bottom: 0.5rem;
+}
+
+.day-selector label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.day-selector label:has(input:checked) {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.day-selector input[type="checkbox"] {
+    display: none;
+}
+
 .add-activity-form input {
     padding: 0.5rem;
     font-size: 0.9rem;
@@ -554,6 +588,16 @@ button.add-btn:hover {
 .activity-info span {
     font-size: 0.8rem;
     color: var(--text-secondary);
+}
+
+.activity-days-badge {
+    font-size: 0.75rem;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    padding: 0.1rem 0.4rem;
+    border-radius: 12px;
+    margin-left: 0.5rem;
+    color: var(--text-primary);
 }
 
 .remove-activity-btn {
