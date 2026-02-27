@@ -506,8 +506,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const newTask = {
                     title: `📚 ${task.title} (${task.subject})`,
-                    notes: `Difficulty: ${task.difficulty}\nEst. Effort: ${task.effort}h`,
-                    due: `${task.dueDate}T${scheduledTime}:00.000Z` // Simplification for demo
+                    notes: `Scheduled for: ${scheduledTime}\nDifficulty: ${task.difficulty}\nEst. Effort: ${task.effort}h`,
+                    due: `${task.dueDate}T00:00:00.000Z` // Tasks API drops time, but needs this format
                 };
 
                 await gapi.client.tasks.tasks.insert({
