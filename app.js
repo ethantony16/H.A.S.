@@ -3,14 +3,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DOM Elements ---
     const form = document.getElementById('assignment-form');
-    const titleInput = document.getElementById('title');
-    const subjectInput = document.getElementById('subject');
-    const dueDateInput = document.getElementById('due-date');
-    const effortInput = document.getElementById('effort');
-    const difficultyInput = document.getElementById('difficulty');
     const priorityList = document.getElementById('priority-list');
     const themeToggle = document.getElementById('theme-toggle');
     const accentPicker = document.getElementById('accent-picker');
+    const dueDateInput = document.getElementById('dueDateInput');
+    const effortInput = document.getElementById('effort');
+    const effortUnit = document.getElementById('effortUnit');
+    const difficultyInput = document.getElementById('difficulty');
     const gcalBtn = document.getElementById('gcal-signin-btn');
     const scheduleBtn = document.getElementById('auto-schedule-btn');
     const deleteModal = document.getElementById('delete-modal');
@@ -49,15 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let assignmentToDeleteId = null;
 
     // --- Initialization ---
-    init();
+    loadAssignments();
     loadTheme();
-
-    function init() {
-        loadAssignments();
-
-        // Form submit defaults
-        difficultyInput.value = 'Medium';
-    }
 
     // --- Event Listeners ---
     form.addEventListener('submit', handleAddAssignment);
@@ -65,9 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     accentPicker.addEventListener('input', updateAccentColor);
     gcalBtn.addEventListener('click', handleAuthClick);
     scheduleBtn.addEventListener('click', handleAutoSchedule);
-    if (confirmDeleteBtn) {
-        confirmDeleteBtn.addEventListener('click', handleConfirmDelete);
-    }
+    confirmDeleteBtn.addEventListener('click', handleConfirmDelete);
     cancelDeleteBtn.addEventListener('click', closeModal);
 
 
@@ -79,14 +69,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleAddAssignment(e) {
         e.preventDefault();
 
-        const title = titleInput.value;
-        const subject = subjectInput.value;
+        const title = document.getElementById('title').value;
+        const subject = document.getElementById('subject').value;
         const difficulty = difficultyInput.value;
         const dueDate = dueDateInput.value;
 
-        // Handle Effort Conversion (now always expects minutes from the input, since we removed the unit selector)
-        // Wait, looking at the UI, the input label says "Duration" without specifying units. Let's assume it's in hours for now given the step size 1.
-        let effortVal = parseFloat(effortInput.value);
+        // Handle Effort Conversion
+        let effortVal = parseInt(effortInput.value);
+        if (effortUnit.value === 'minutes') {
+            effortVal = effortVal / 60; // Convert to hours for scoring
+        }
 
         const newAssignment = {
             id: Date.now(),
@@ -105,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Reset defaults
         difficultyInput.value = 'Medium';
+        effortUnit.value = 'hours';
     }
 
     // --- Core Logic ---
@@ -295,15 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('assignments', JSON.stringify(assignments));
     }
 
-    function formatTo12Hour(timeStr) {
-        if (!timeStr) return '';
-        let [hours, minutes] = timeStr.split(':');
-        hours = parseInt(hours, 10);
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12 || 12;
-        return `${hours}:${minutes} ${ampm}`;
-    }
-
     // --- Theme & Accent ---
 
     function toggleTheme() {
@@ -439,13 +423,9 @@ document.addEventListener('DOMContentLoaded', () => {
             toSchedule.sort((a, b) => calculatePriorityScore(b) - calculatePriorityScore(a));
 
             for (const task of toSchedule) {
-                // Determine scheduled time
-                const scheduledTime = calculateOptimalTime(task.dueDate);
-                const displayTime = formatTo12Hour(scheduledTime);
-
                 const newTask = {
                     title: `📚 ${task.title} (${task.subject})`,
-                    notes: `Scheduled for: ${displayTime}\nDifficulty: ${task.difficulty}\nEst. Effort: ${task.effort}h`,
+                    notes: `Difficulty: ${task.difficulty}\nEst. Effort: ${task.effort}h`,
                     due: `${task.dueDate}T00:00:00.000Z` // Tasks API drops time, but needs this format
                 };
 
@@ -472,8 +452,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function calculateOptimalTime(dateStr) {
-        // Without preferences, we will just default to 16:00 (4:00 PM)
-        return "16:00";
-    }
+
 }); 
