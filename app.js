@@ -105,7 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Reset defaults
         difficultyInput.value = 'Medium';
-        effortUnit.value = 'hours';
     }
 
     // --- Core Logic ---
