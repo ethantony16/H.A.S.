@@ -2,28 +2,21 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Homework Planner Auto-Sorter initialized.');
 
     // --- DOM Elements ---
-    const form = document.getElementById('assignment-form');
-    const priorityList = document.getElementById('priority-list');
-    const themeToggle = document.getElementById('theme-toggle');
-    const accentPicker = document.getElementById('accent-picker');
-    const dueDateInput = document.getElementById('dueDateInput');
+    const form = document.getElementById('add-assignment-form');
+    const titleInput = document.getElementById('title');
+    const subjectInput = document.getElementById('subject');
+    const dueDateInput = document.getElementById('due-date');
     const effortInput = document.getElementById('effort');
     const effortUnit = document.getElementById('effortUnit');
     const difficultyInput = document.getElementById('difficulty');
+    const priorityList = document.getElementById('priority-list');
+    const themeToggle = document.getElementById('theme-toggle');
+    const accentPicker = document.getElementById('accent-picker');
     const gcalBtn = document.getElementById('gcal-signin-btn');
     const scheduleBtn = document.getElementById('auto-schedule-btn');
     const deleteModal = document.getElementById('delete-modal');
     const confirmDeleteBtn = document.getElementById('confirm-delete');
     const cancelDeleteBtn = document.getElementById('cancel-delete');
-
-    // --- Preferences Elements ---
-    const schoolStartInput = document.getElementById('school-start');
-    const schoolEndInput = document.getElementById('school-end');
-    const activitiesList = document.getElementById('activities-list');
-    const activityNameInput = document.getElementById('activity-name');
-    const activityStartInput = document.getElementById('activity-start');
-    const activityEndInput = document.getElementById('activity-end');
-    const addActivityBtn = document.getElementById('add-activity-btn');
 
 
     // --- Google Calendar Config ---
@@ -55,15 +48,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- State ---
     let assignments = [];
     let assignmentToDeleteId = null;
-    let preferences = {
-        schoolHours: { start: '08:00', end: '15:00' },
-        activities: []
-    };
 
     // --- Initialization ---
-    loadAssignments();
-    loadPreferences();
+    init();
     loadTheme();
+
+    function init() {
+        loadAssignments();
+
+        // Form submit defaults
+        difficultyInput.value = 'Medium';
+        effortUnit.value = 'hours';
+    }
 
     // --- Event Listeners ---
     form.addEventListener('submit', handleAddAssignment);
@@ -71,12 +67,10 @@ document.addEventListener('DOMContentLoaded', () => {
     accentPicker.addEventListener('input', updateAccentColor);
     gcalBtn.addEventListener('click', handleAuthClick);
     scheduleBtn.addEventListener('click', handleAutoSchedule);
-    confirmDeleteBtn.addEventListener('click', handleConfirmDelete);
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', handleConfirmDelete);
+    }
     cancelDeleteBtn.addEventListener('click', closeModal);
-
-    schoolStartInput.addEventListener('change', savePreferences);
-    schoolEndInput.addEventListener('change', savePreferences);
-    addActivityBtn.addEventListener('click', handleAddActivity);
 
 
     // Initialize Google Scripts
@@ -87,8 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleAddAssignment(e) {
         e.preventDefault();
 
-        const title = document.getElementById('title').value;
-        const subject = document.getElementById('subject').value;
+        const title = titleInput.value;
+        const subject = subjectInput.value;
         const difficulty = difficultyInput.value;
         const dueDate = dueDateInput.value;
 
@@ -306,21 +300,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('assignments', JSON.stringify(assignments));
     }
 
-    function loadPreferences() {
-        const saved = localStorage.getItem('homeworkPreferences');
-        if (saved) {
-            preferences = JSON.parse(saved);
-        }
-
-        schoolStartInput.value = preferences.schoolHours.start;
-        schoolEndInput.value = preferences.schoolHours.end;
-        renderActivities();
-    }
-
-    function savePreferences() {
-        localStorage.setItem('homeworkPreferences', JSON.stringify(preferences));
-    }
-
     function formatTo12Hour(timeStr) {
         if (!timeStr) return '';
         let [hours, minutes] = timeStr.split(':');
@@ -328,60 +307,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const ampm = hours >= 12 ? 'PM' : 'AM';
         hours = hours % 12 || 12;
         return `${hours}:${minutes} ${ampm}`;
-    }
-
-    function handleAddActivity() {
-        const name = activityNameInput.value;
-        const start = activityStartInput.value;
-        const end = activityEndInput.value;
-
-        // Collect selected days
-        const selectedDays = Array.from(document.querySelectorAll('#activity-days input:checked')).map(cb => parseInt(cb.value));
-
-        if (name && start && end && selectedDays.length > 0) {
-            preferences.activities.push({ id: Date.now(), name, start, end, days: selectedDays });
-            savePreferences();
-            renderActivities();
-            activityNameInput.value = '';
-            activityStartInput.value = '';
-            activityEndInput.value = '';
-            document.querySelectorAll('#activity-days input').forEach(cb => cb.checked = false);
-        } else if (selectedDays.length === 0) {
-            alert("Please select at least one day for the activity.");
-        }
-    }
-
-    function renderActivities() {
-        activitiesList.innerHTML = '';
-
-        const dayMap = { 0: 'Su', 1: 'M', 2: 'T', 3: 'W', 4: 'Th', 5: 'F', 6: 'Sa' };
-
-        preferences.activities.forEach(activity => {
-            const daysStr = (activity.days || []).map(d => dayMap[d]).join(', ');
-
-            const startDisplay = formatTo12Hour(activity.start);
-            const endDisplay = formatTo12Hour(activity.end);
-
-            const div = document.createElement('div');
-            div.className = 'activity-item';
-            div.innerHTML = `
-                <div class="activity-info">
-                    <strong>${activity.name} <span class="activity-days-badge">${daysStr}</span></strong>
-                    <span>${startDisplay} - ${endDisplay}</span>
-                </div>
-                <button class="remove-activity-btn" data-id="${activity.id}">&times;</button>
-            `;
-            activitiesList.appendChild(div);
-        });
-
-        document.querySelectorAll('.remove-activity-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const id = parseInt(e.target.dataset.id);
-                preferences.activities = preferences.activities.filter(a => a.id !== id);
-                savePreferences();
-                renderActivities();
-            });
-        });
     }
 
     // --- Theme & Accent ---
@@ -553,31 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function calculateOptimalTime(dateStr) {
-        const dueDate = new Date(dateStr + 'T00:00:00');
-        const dayOfWeek = dueDate.getDay(); // 0 = Sunday, 1 = Monday, ... 6 = Saturday
-        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-
-        // 1. Determine base available time for the day
-        let availableTime = "09:00"; // Default weekend start time
-
-        if (!isWeekend) {
-            // It's a weekday, wait until school is over
-            availableTime = preferences.schoolHours.end;
-        }
-
-        // 2. Find the *latest* activity that occurs on this specific day
-        let latestActivityEnd = availableTime;
-
-        preferences.activities.forEach(act => {
-            // Check if this activity happens on the due date's day of week
-            if (act.days && act.days.includes(dayOfWeek)) {
-                if (act.end > latestActivityEnd) {
-                    latestActivityEnd = act.end;
-                }
-            }
-        });
-
-        // 3. The earliest we can start is after school AND after all activities for the day
-        return latestActivityEnd;
+        // Without preferences, we will just default to 16:00 (4:00 PM)
+        return "16:00";
     }
 }); 
