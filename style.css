@@ -10,7 +10,6 @@
     --accent-hover: #ffb166;
     --danger-color: #ef4444;
     --success-color: #22c55e;
-
     /* Spacing & Layout */
     --radius-sm: 6px;
     --radius-md: 12px;
@@ -577,5 +576,3 @@ button.add-btn:hover {
     filter: brightness(110%);
     transform: scale(1.05);
 }
-
-‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎
