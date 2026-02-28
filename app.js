@@ -245,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     assignmentEl.innerHTML = `
                             <div class="assignment-content">
                                 <div class="assignment-top">
-                                    <h3>${assignment.title}</h3>
+                                    <h3>${assignment.title} ${assignment.isScheduled ? '<span class="scheduled-badge" title="Scheduled in Google Tasks">✓ Scheduled</span>' : ''}</h3>
                                     <div class="assignment-actions">
                                         <button class="delete-btn" data-id="${assignment.id}" aria-label="Delete">&times;</button>
                                     </div>
@@ -307,19 +307,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function loadPreferences() {
-        const stored = localStorage.getItem('preferences');
-        if (stored) {
-            preferences = JSON.parse(stored);
-            schoolStartInput.value = preferences.schoolHours.start;
-            schoolEndInput.value = preferences.schoolHours.end;
-            renderActivities();
+        const saved = localStorage.getItem('homeworkPreferences');
+        if (saved) {
+            preferences = JSON.parse(saved);
         }
+
+        schoolStartInput.value = preferences.schoolHours.start;
+        schoolEndInput.value = preferences.schoolHours.end;
+        renderActivities();
     }
 
     function savePreferences() {
-        preferences.schoolHours.start = schoolStartInput.value;
-        preferences.schoolHours.end = schoolEndInput.value;
-        localStorage.setItem('preferences', JSON.stringify(preferences));
+        localStorage.setItem('homeworkPreferences', JSON.stringify(preferences));
+    }
+
+    function formatTo12Hour(timeStr) {
+        if (!timeStr) return '';
+        let [hours, minutes] = timeStr.split(':');
+        hours = parseInt(hours, 10);
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12;
+        return `${hours}:${minutes} ${ampm}`;
     }
 
     function handleAddActivity() {
@@ -351,12 +359,15 @@ document.addEventListener('DOMContentLoaded', () => {
         preferences.activities.forEach(activity => {
             const daysStr = (activity.days || []).map(d => dayMap[d]).join(', ');
 
+            const startDisplay = formatTo12Hour(activity.start);
+            const endDisplay = formatTo12Hour(activity.end);
+
             const div = document.createElement('div');
             div.className = 'activity-item';
             div.innerHTML = `
                 <div class="activity-info">
                     <strong>${activity.name} <span class="activity-days-badge">${daysStr}</span></strong>
-                    <span>${activity.start} - ${activity.end}</span>
+                    <span>${startDisplay} - ${endDisplay}</span>
                 </div>
                 <button class="remove-activity-btn" data-id="${activity.id}">&times;</button>
             `;
@@ -495,7 +506,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 homeworkList = newList.result;
             }
 
-            const toSchedule = assignments.filter(a => !a.completed);
+            const toSchedule = assignments.filter(a => !a.completed && !a.isScheduled);
+
+            if (toSchedule.length === 0) {
+                alert("All assignments are already scheduled or completed!");
+                scheduleBtn.disabled = false;
+                scheduleBtn.innerText = "✨ Auto-Schedule";
+                return;
+            }
 
             // Sort by priority to schedule the most important ones first
             toSchedule.sort((a, b) => calculatePriorityScore(b) - calculatePriorityScore(a));
@@ -503,10 +521,11 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const task of toSchedule) {
                 // Determine scheduled time
                 const scheduledTime = calculateOptimalTime(task.dueDate);
+                const displayTime = formatTo12Hour(scheduledTime);
 
                 const newTask = {
                     title: `📚 ${task.title} (${task.subject})`,
-                    notes: `Scheduled for: ${scheduledTime}\nDifficulty: ${task.difficulty}\nEst. Effort: ${task.effort}h`,
+                    notes: `Scheduled for: ${displayTime}\nDifficulty: ${task.difficulty}\nEst. Effort: ${task.effort}h`,
                     due: `${task.dueDate}T00:00:00.000Z` // Tasks API drops time, but needs this format
                 };
 
@@ -514,7 +533,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     tasklist: homeworkList.id,
                     resource: newTask
                 });
+
+                // Mark this specific assignment object as scheduled
+                task.isScheduled = true;
             }
+
+            // Save state and re-render to show badges
+            saveAssignments();
+            renderAssignments();
 
             alert(`Successfully added ${toSchedule.length} tasks to your "Homework Auto-Sorter" list!`);
         } catch (err) {
