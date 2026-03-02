@@ -446,19 +446,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            let currentStartDate = new Date();
+            // Start scheduling from tomorrow if tasks are due tomorrow or later, otherwise today
+            currentStartDate.setHours(16, 0, 0, 0); // Default to 4 PM
+
             // Sort by priority to schedule the most important ones first
             toSchedule.sort((a, b) => calculatePriorityScore(b) - calculatePriorityScore(a));
 
             for (const task of toSchedule) {
+                // --- 1. Create Google Task ---
                 const newTask = {
                     title: `📚 ${task.title} (${task.subject})`,
-                    notes: `Difficulty: ${task.difficulty}\nEst. Effort: ${task.effort}h`,
-                    due: `${task.dueDate}T00:00:00.000Z` // Tasks API drops time, but needs this format
+                    notes: `Difficulty: ${task.difficulty}\nEst. Effort: ${task.effort}h\nAdded as Calendar Event`,
+                    due: `${task.dueDate}T00:00:00.000Z` // Tasks API drops time
                 };
 
                 await gapi.client.tasks.tasks.insert({
                     tasklist: homeworkList.id,
                     resource: newTask
+                });
+
+                // --- 2. Create Google Calendar Event ---
+                // Try to schedule on the due date at 4 PM
+                const eventStartDate = new Date(task.dueDate + 'T16:00:00');
+                const eventEndDate = new Date(eventStartDate.getTime() + (task.effort * 60 * 60 * 1000));
+
+                const event = {
+                    'summary': `📚 ${task.title} (${task.subject})`,
+                    'description': `Difficulty: ${task.difficulty}\nPriority Score: ${calculatePriorityScore(task)}`,
+                    'start': {
+                        'dateTime': eventStartDate.toISOString(),
+                        'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone
+                    },
+                    'end': {
+                        'dateTime': eventEndDate.toISOString(),
+                        'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone
+                    },
+                    'colorId': '5' // Yellow color for homework blocks
+                };
+
+                await gapi.client.calendar.events.insert({
+                    'calendarId': 'primary',
+                    'resource': event
                 });
 
                 // Mark this specific assignment object as scheduled
