@@ -291,10 +291,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Theme & Accent ---
 
     function toggleTheme() {
-        document.body.classList.toggle('light-theme');
         const isLight = document.body.classList.contains('light-theme');
-        localStorage.setItem('theme', isLight ? 'light' : 'dark');
-        themeToggle.textContent = isLight ? '🌙' : '☀️';
+        const isBeige = document.body.classList.contains('beige-theme');
+
+        document.body.classList.remove('light-theme', 'beige-theme');
+
+        let newTheme = 'dark';
+        let icon = '☀️';
+
+        if (!isLight && !isBeige) {
+            // Dark -> Light
+            document.body.classList.add('light-theme');
+            newTheme = 'light';
+            icon = '☕'; // Coffee for light, then moon for beige
+        } else if (isLight) {
+            // Light -> Beige
+            document.body.classList.add('beige-theme');
+            newTheme = 'beige';
+            icon = '🌙';
+        } else if (isBeige) {
+            // Beige -> Dark
+            newTheme = 'dark';
+            icon = '☀️';
+        }
+
+        localStorage.setItem('theme', newTheme);
+        themeToggle.textContent = icon;
     }
 
     function updateAccentColor(e) {
@@ -307,7 +329,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'light') {
             document.body.classList.add('light-theme');
+            themeToggle.textContent = '☕';
+        } else if (savedTheme === 'beige') {
+            document.body.classList.add('beige-theme');
             themeToggle.textContent = '🌙';
+        } else {
+            themeToggle.textContent = '☀️';
         }
 
         const savedAccent = localStorage.getItem('accentColor');

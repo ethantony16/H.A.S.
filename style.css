@@ -37,6 +37,18 @@ body.light-theme {
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --glass-bg: rgba(255, 255, 255, 0.8);
+}
+
+/* Beige Theme Override */
+body.beige-theme {
+    --bg-color: #fdfbf7;
+    --surface-color: #f4eee0;
+    --border-color: #e5dcc3;
+    --text-primary: #3d352b;
+    --text-secondary: #7d705e;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --glass-bg: rgba(244, 238, 224, 0.8);
     --glass-border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
