@@ -74,8 +74,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const difficulty = difficultyInput.value;
         const dueDate = dueDateInput.value;
 
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const inputDate = new Date(dueDate + 'T00:00:00');
+
+        if (inputDate < now) {
+            alert("Cannot add assignments with due dates in the past.");
+            return;
+        }
+
         // Handle Effort Conversion
-        let effortVal = parseInt(effortInput.value);
+        let effortVal = parseFloat(effortInput.value);
         if (effortUnit.value === 'minutes') {
             effortVal = effortVal / 60; // Convert to hours for scoring
         }
@@ -87,7 +96,8 @@ document.addEventListener('DOMContentLoaded', () => {
             dueDate,
             difficulty,
             effort: effortVal,
-            completed: false
+            completed: false,
+            isScheduled: false
         };
 
         assignments.push(newAssignment);
@@ -155,9 +165,13 @@ document.addEventListener('DOMContentLoaded', () => {
         now.setHours(0, 0, 0, 0);
 
         assignments.forEach(assignment => {
-            const dueDate = new Date(assignment.dueDate + 'T00:00:00');
-            const diffTime = dueDate - now;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            // Fix timezone parsing issue by explicitly using local time parts
+            const [year, month, day] = assignment.dueDate.split('-');
+            const dueDate = new Date(year, month - 1, day);
+            dueDate.setHours(0, 0, 0, 0);
+
+            const diffTime = dueDate.getTime() - now.getTime();
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
             if (diffDays < 0) groups.overdue.push(assignment);
             else if (diffDays === 0) groups.today.push(assignment);
@@ -267,11 +281,38 @@ document.addEventListener('DOMContentLoaded', () => {
         assignmentToDeleteId = null;
     }
 
-    function handleConfirmDelete() {
+    async function handleConfirmDelete() {
         if (assignmentToDeleteId !== null) {
-            assignments = assignments.filter(a => a.id !== assignmentToDeleteId);
-            saveAssignments();
-            renderAssignments();
+            const assignmentToDelete = assignments.find(a => a.id === assignmentToDeleteId);
+
+            if (assignmentToDelete) {
+                // If it was scheduled, try to delete from Google APIs
+                if (assignmentToDelete.isScheduled && gapiInited && gisInited && gapi.client.getToken() !== null) {
+                    try {
+                        // 1. Delete from Tasks list if we have the ID and list ID
+                        if (assignmentToDelete.googleTaskId && assignmentToDelete.googleTaskListId) {
+                            await gapi.client.tasks.tasks.delete({
+                                tasklist: assignmentToDelete.googleTaskListId,
+                                task: assignmentToDelete.googleTaskId
+                            });
+                        }
+
+                        // 2. Delete from Calendar if we have the ID
+                        if (assignmentToDelete.googleEventId) {
+                            await gapi.client.calendar.events.delete({
+                                calendarId: 'primary',
+                                eventId: assignmentToDelete.googleEventId
+                            });
+                        }
+                    } catch (err) {
+                        console.error("Failed to delete from Google APIs (it may have been deleted manually):", err);
+                    }
+                }
+
+                assignments = assignments.filter(a => a.id !== assignmentToDeleteId);
+                saveAssignments();
+                renderAssignments();
+            }
             closeModal();
         }
     }
@@ -375,7 +416,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function checkAuthButton() {
         if (gapiInited && gisInited) {
-            // Button is ready - keep its current SVG icon + text
+            if (gapi.client.getToken() !== null) {
+                gcalBtn.innerHTML = '✅ Connected';
+                scheduleBtn.style.display = 'inline-block';
+            }
         }
     }
 
@@ -454,17 +498,24 @@ document.addEventListener('DOMContentLoaded', () => {
             toSchedule.sort((a, b) => calculatePriorityScore(b) - calculatePriorityScore(a));
 
             for (const task of toSchedule) {
+                // Correctly offset due date to local midnight to avoid timezone shift on Google Tasks
+                const localDueDate = new Date(task.dueDate + 'T23:59:59');
+
                 // --- 1. Create Google Task ---
                 const newTask = {
                     title: `📚 ${task.title} (${task.subject})`,
                     notes: `Difficulty: ${task.difficulty}\nEst. Effort: ${task.effort}h\nAdded as Calendar Event`,
-                    due: `${task.dueDate}T00:00:00.000Z` // Tasks API drops time
+                    due: localDueDate.toISOString()
                 };
 
-                await gapi.client.tasks.tasks.insert({
+                const taskResponse = await gapi.client.tasks.tasks.insert({
                     tasklist: homeworkList.id,
                     resource: newTask
                 });
+
+                // Save task references for future deletion
+                task.googleTaskId = taskResponse.result.id;
+                task.googleTaskListId = homeworkList.id;
 
                 // --- 2. Create Google Calendar Event ---
                 // Try to schedule on the due date at 4 PM
@@ -485,10 +536,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     'colorId': '5' // Yellow color for homework blocks
                 };
 
-                await gapi.client.calendar.events.insert({
+                const eventResponse = await gapi.client.calendar.events.insert({
                     'calendarId': 'primary',
                     'resource': event
                 });
+
+                // Save event reference
+                task.googleEventId = eventResponse.result.id;
 
                 // Mark this specific assignment object as scheduled
                 task.isScheduled = true;
