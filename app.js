@@ -460,6 +460,101 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function findFreeTimeBlock(effortHours, dueDateStr, localEvents) {
+        // Find a block of free time that fits `effortHours` between now and `dueDateStr` at 10:00 PM
+        const now = new Date();
+        const minStart = new Date(Math.max(now.getTime(), new Date().setHours(0, 0, 0, 0))); // Not before today
+        const maxEnd = new Date(dueDateStr + 'T22:00:00'); // Due at 10 PM on due date
+
+        // Ensure effort is at least 30 mins, max 6 hours for a single block
+        const requiredMs = Math.min(Math.max(effortHours, 0.5), 6) * 60 * 60 * 1000;
+
+        // 1. Fetch Free/Busy data from Google Calendar
+        let busyBlocks = [];
+        try {
+            const response = await gapi.client.calendar.freebusy.query({
+                timeMin: minStart.toISOString(),
+                timeMax: maxEnd.toISOString(),
+                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                items: [{ id: 'primary' }]
+            });
+
+            const calendars = response.result.calendars;
+            if (calendars && calendars['primary'] && calendars['primary'].busy) {
+                busyBlocks = calendars['primary'].busy.map(b => ({
+                    start: new Date(b.start),
+                    end: new Date(b.end)
+                }));
+            }
+        } catch (err) {
+            console.error("Error fetching free/busy:", err);
+            // Non-fatal, just proceed without knowing calendar events
+        }
+
+        // Add locally scheduled events from THIS session to the busy blocks
+        localEvents.forEach(e => {
+            busyBlocks.push({ start: e.start, end: e.end });
+        });
+
+        // 2. Sort all busy blocks by start time
+        busyBlocks.sort((a, b) => a.start - b.start);
+
+        // 3. Scan day by day from minStart to maxEnd
+        let currentDay = new Date(minStart);
+        currentDay.setHours(0, 0, 0, 0);
+
+        while (currentDay <= maxEnd) {
+            const isWeekend = currentDay.getDay() === 0 || currentDay.getDay() === 6;
+
+            // Define active homework hours for this day
+            let windowStart = new Date(currentDay);
+            windowStart.setHours(isWeekend ? 10 : 16, 0, 0, 0); // 10 AM weekend, 4 PM weekday
+
+            let windowEnd = new Date(currentDay);
+            windowEnd.setHours(22, 0, 0, 0); // 10 PM end
+
+            // If scanning today, we can't start in the past
+            if (windowStart < minStart) {
+                windowStart = new Date(minStart.getTime() + (15 * 60000)); // Start in 15 mins
+            }
+
+            // If the window is still valid
+            if (windowStart < windowEnd) {
+                let potentialStart = new Date(windowStart);
+
+                // Keep checking blocks within this day's window
+                while (potentialStart.getTime() + requiredMs <= windowEnd.getTime()) {
+                    let potentialEnd = new Date(potentialStart.getTime() + requiredMs);
+
+                    // Check if [potentialStart, potentialEnd] overlaps with any busy block
+                    const overlappingBlock = busyBlocks.find(b =>
+                        (potentialStart < b.end && potentialEnd > b.start)
+                    );
+
+                    if (!overlappingBlock) {
+                        // Found a free slot!
+                        return { start: potentialStart, end: potentialEnd };
+                    } else {
+                        // Jump to the end of the overlapping block to try again
+                        potentialStart = new Date(overlappingBlock.end);
+                        // Add a 5 minute buffer after an event
+                        potentialStart.setMinutes(potentialStart.getMinutes() + 5);
+                    }
+                }
+            }
+
+            // Move to next day
+            currentDay.setDate(currentDay.getDate() + 1);
+        }
+
+        // 4. Fallback: If we couldn't find ANY free time, just schedule it at 4 PM on the due date as a last resort
+        const fallbackStart = new Date(dueDateStr + 'T16:00:00');
+        return {
+            start: fallbackStart,
+            end: new Date(fallbackStart.getTime() + requiredMs)
+        };
+    }
+
     async function handleAutoSchedule() {
         if (!assignments.length) {
             alert("No assignments to schedule!");
@@ -490,21 +585,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            let currentStartDate = new Date();
-            // Start scheduling from tomorrow if tasks are due tomorrow or later, otherwise today
-            currentStartDate.setHours(16, 0, 0, 0); // Default to 4 PM
+            let newlyScheduledEvents = [];
 
             // Sort by priority to schedule the most important ones first
             toSchedule.sort((a, b) => calculatePriorityScore(b) - calculatePriorityScore(a));
 
             for (const task of toSchedule) {
-                // Correctly offset due date to local midnight to avoid timezone shift on Google Tasks
-                const localDueDate = new Date(task.dueDate + 'T23:59:59');
+                // Find dynamic free time on the calendar
+                const scheduledSlot = await findFreeTimeBlock(task.effort, task.dueDate, newlyScheduledEvents);
+
+                // Format times for display & API
+                const localDueDate = new Date(task.dueDate + 'T23:59:59'); // Tasks deadline
+                const startTimeDisplay = scheduledSlot.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                 // --- 1. Create Google Task ---
                 const newTask = {
                     title: `📚 ${task.title} (${task.subject})`,
-                    notes: `Difficulty: ${task.difficulty}\nEst. Effort: ${task.effort}h\nAdded as Calendar Event`,
+                    notes: `Scheduled for: ${startTimeDisplay}\nDifficulty: ${task.difficulty}\nEst. Effort: ${task.effort}h\nAdded as Calendar Event`,
                     due: localDueDate.toISOString()
                 };
 
@@ -518,19 +615,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 task.googleTaskListId = homeworkList.id;
 
                 // --- 2. Create Google Calendar Event ---
-                // Try to schedule on the due date at 4 PM
-                const eventStartDate = new Date(task.dueDate + 'T16:00:00');
-                const eventEndDate = new Date(eventStartDate.getTime() + (task.effort * 60 * 60 * 1000));
-
                 const event = {
                     'summary': `📚 ${task.title} (${task.subject})`,
                     'description': `Difficulty: ${task.difficulty}\nPriority Score: ${calculatePriorityScore(task)}`,
                     'start': {
-                        'dateTime': eventStartDate.toISOString(),
+                        'dateTime': scheduledSlot.start.toISOString(),
                         'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone
                     },
                     'end': {
-                        'dateTime': eventEndDate.toISOString(),
+                        'dateTime': scheduledSlot.end.toISOString(),
                         'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone
                     },
                     'colorId': '5' // Yellow color for homework blocks
@@ -540,6 +633,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     'calendarId': 'primary',
                     'resource': event
                 });
+
+                // Record this so the next task in the loop doesn't overlap it
+                newlyScheduledEvents.push({ start: scheduledSlot.start, end: scheduledSlot.end });
 
                 // Save event reference
                 task.googleEventId = eventResponse.result.id;
