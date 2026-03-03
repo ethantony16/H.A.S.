@@ -64,6 +64,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize Google Scripts
     maybeInitGoogle();
 
+    // --- Dynamic Input Validation ---
+    effortUnit.addEventListener('change', () => {
+        if (effortUnit.value === 'hours') {
+            effortInput.max = "24";
+            if (parseFloat(effortInput.value) > 24) effortInput.value = "24";
+        } else {
+            effortInput.max = "1440"; // 24 hours in minutes
+            if (parseFloat(effortInput.value) > 1440) effortInput.value = "1440";
+        }
+    });
+
     // --- Handlers ---
 
     function handleAddAssignment(e) {
@@ -87,6 +98,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let effortVal = parseFloat(effortInput.value);
         if (effortUnit.value === 'minutes') {
             effortVal = effortVal / 60; // Convert to hours for scoring
+        }
+
+        // Validate max boundary inside JS specifically (24 hours max)
+        if (effortVal > 24) {
+            alert("Assignments cannot exceed 24 hours in duration. Please break it down into smaller tasks.");
+            return;
         }
 
         const newAssignment = {
