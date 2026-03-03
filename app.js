@@ -461,10 +461,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function findFreeTimeBlock(effortHours, dueDateStr, localEvents) {
-        // Find a block of free time that fits `effortHours` between now and `dueDateStr` at 10:00 PM
+        // Find a block of free time that fits `effortHours` before the `dueDateStr`
         const now = new Date();
         const minStart = new Date(Math.max(now.getTime(), new Date().setHours(0, 0, 0, 0))); // Not before today
-        const maxEnd = new Date(dueDateStr + 'T22:00:00'); // Due at 10 PM on due date
+
+        // Target finishing by 10 PM the night BEFORE it is due
+        let maxEnd = new Date(dueDateStr + 'T00:00:00');
+        maxEnd.setDate(maxEnd.getDate() - 1);
+        maxEnd.setHours(22, 0, 0, 0);
+
+        // If it's already too late to schedule before the due date, fallback to allowing it ON the due date
+        if (minStart > maxEnd) {
+            maxEnd = new Date(dueDateStr + 'T22:00:00');
+        }
 
         // Ensure effort is at least 30 mins, max 6 hours for a single block
         const requiredMs = Math.min(Math.max(effortHours, 0.5), 6) * 60 * 60 * 1000;
@@ -547,8 +556,9 @@ document.addEventListener('DOMContentLoaded', () => {
             currentDay.setDate(currentDay.getDate() + 1);
         }
 
-        // 4. Fallback: If we couldn't find ANY free time, just schedule it at 4 PM on the due date as a last resort
-        const fallbackStart = new Date(dueDateStr + 'T16:00:00');
+        // 4. Fallback: If we couldn't find ANY free time, schedule it at 4 PM on the target date as a last resort
+        const fallbackStart = new Date(maxEnd.getTime());
+        fallbackStart.setHours(16, 0, 0, 0);
         return {
             start: fallbackStart,
             end: new Date(fallbackStart.getTime() + requiredMs)
