@@ -367,10 +367,20 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.add('beige-theme');
             newTheme = 'beige';
             icon = '🌙';
+            // Hotwire to darker beige
+            const beigeAccent = '#a38a6d';
+            document.documentElement.style.setProperty('--accent-color', beigeAccent);
+            accentPicker.value = beigeAccent;
+            localStorage.setItem('accentColor', beigeAccent);
         } else if (isBeige) {
             // Beige -> Dark
             newTheme = 'dark';
             icon = '☀️';
+            // Reset to default orange when going back to dark
+            const defaultAccent = '#ff9f43';
+            document.documentElement.style.setProperty('--accent-color', defaultAccent);
+            accentPicker.value = defaultAccent;
+            localStorage.setItem('accentColor', defaultAccent);
         }
 
         localStorage.setItem('theme', newTheme);
@@ -396,7 +406,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const savedAccent = localStorage.getItem('accentColor');
-        if (savedAccent) {
+        if (savedTheme === 'beige') {
+            // Enforce darker beige when loading beige
+            const beigeAccent = '#a38a6d';
+            document.documentElement.style.setProperty('--accent-color', beigeAccent);
+            accentPicker.value = beigeAccent;
+        } else if (savedAccent) {
             document.documentElement.style.setProperty('--accent-color', savedAccent);
             accentPicker.value = savedAccent;
         }
